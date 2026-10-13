@@ -89,6 +89,7 @@ ctrl+0 script_message bookmarker-font-size 32
 ```
 
 Font sizes are limited to the range 8–96.
+The selected size is used by both the bookmarks list and its command prompts and messages.
 
 Replacing a bookmark is intended for when you have a bookmark for your current progress in a TV series. When you've finished a new episode, you can select this bookmark and press `p` to instantly rewrite that bookmark with your current progress, leaving the name and its position in the list of bookmarks intact.
 Changing the filepath of a bookmark is intended to quickly change a bookmark in case you moved the media file to a different folder, or perhaps the drive letter of your external drive changed.
