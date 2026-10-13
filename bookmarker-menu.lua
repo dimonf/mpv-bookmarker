@@ -69,6 +69,9 @@ local bookmarkerControls = {
 	LEFT = function()
 		jumpPage(-1)
 	end,
+	U = function()
+		mp.commandv("playlist-clear")
+	end,
 	["+"] = function()
 		changeBookmarkFontSize(2)
 	end,
@@ -886,18 +889,13 @@ function deleteBookmark(slot)
 	displayBookmarks()
 end
 
--- Jump to the specified bookmark
--- This means loading it, reading it, and jumping to the file + position in the bookmark
+-- Insert the specified bookmark after the current playlist entry and play it
 function jumpToBookmark(slot)
 	if bookmarkExists(slot) then
 		local bookmark = bookmarks[slot]
 		if string.sub(bookmark["path"], 1, 4) == "http" or fileExists(bookmark["path"]) then
-			fpath = makeFullPath(mp.get_property("path"))
-			if fpath == bookmark["path"] then
-				mp.set_property_number("time-pos", bookmark["pos"])
-			else
-				mp.commandv("loadfile", parsePath(bookmark["path"]), "replace", -1, "start=" .. bookmark["pos"])
-			end
+			mp.commandv("loadfile", parsePath(bookmark["path"]), "insert-next", -1, "start=" .. bookmark["pos"])
+			mp.commandv("playlist-next", "force")
 			if closeAfterLoad then
 				abort(
 					styleOn

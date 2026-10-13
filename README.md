@@ -71,7 +71,8 @@ It's recommended not to touch `bookmarkerName` but it's there to be changed in c
 * `LEFT/RIGHT`: Navigate through pages of bookmarks (Hold to quickly scroll)
 * `+/-`: Increase or decrease the bookmarks list font size
 * `0`: Reset the bookmarks list font size to mpv's configured OSD font size
-* `ENTER`: Load the currently selected bookmark
+* `ENTER`: Insert the bookmarked file after the current playlist entry and play it from the saved position
+* `U`: Clear the playlist except for the currently playing file
 * `DELETE`: Delete the currently selected bookmark
 * `s`: Save a bookmark of the current media file and position
 * `shift+s`: Save a bookmark of the current media file and position (shows a text input, allowing you to type)
