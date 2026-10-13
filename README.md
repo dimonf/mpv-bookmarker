@@ -36,6 +36,9 @@ Open `bookmarker-menu.lua` in a text editor, and you can easily change these set
 local maxChar = 100
 -- Number of bookmarks to be displayed per page
 local bookmarksPerPage = 10
+-- Font size for the bookmarks list
+local defaultBookmarkFontSize = mp.get_property_number("osd-font-size", 55)
+local bookmarkFontSize = defaultBookmarkFontSize
 -- Whether to close the Bookmarker menu after loading a bookmark
 local closeAfterLoad = true
 -- Whether to close the Bookmarker menu after replacing a bookmark
@@ -66,6 +69,8 @@ It's recommended not to touch `bookmarkerName` but it's there to be changed in c
 * `ESC`: Close the Bookmarker menu
 * `UP/DOWN`: Navigate through the bookmarks on the current page (Hold to quickly scroll)
 * `LEFT/RIGHT`: Navigate through pages of bookmarks (Hold to quickly scroll)
+* `+/-`: Increase or decrease the bookmarks list font size
+* `0`: Reset the bookmarks list font size to mpv's configured OSD font size
 * `ENTER`: Load the currently selected bookmark
 * `DELETE`: Delete the currently selected bookmark
 * `s`: Save a bookmark of the current media file and position
@@ -74,6 +79,16 @@ It's recommended not to touch `bookmarkerName` but it's there to be changed in c
 * `r`: Rename the currently selected bookmark (shows a text input, allowing you to type)
 * `f`: Change the filepath of the currently selected bookmark (shows a text input, allowing you to type)
 * `m`: Move the currently selected bookmark
+
+The font size can also be changed at any time from `input.conf`. For example:
+
+```
+ctrl++ script_message bookmarker-font-size-change 2
+ctrl+- script_message bookmarker-font-size-change -2
+ctrl+0 script_message bookmarker-font-size 32
+```
+
+Font sizes are limited to the range 8–96.
 
 Replacing a bookmark is intended for when you have a bookmark for your current progress in a TV series. When you've finished a new episode, you can select this bookmark and press `p` to instantly rewrite that bookmark with your current progress, leaving the name and its position in the list of bookmarks intact.
 Changing the filepath of a bookmark is intended to quickly change a bookmark in case you moved the media file to a different folder, or perhaps the drive letter of your external drive changed.

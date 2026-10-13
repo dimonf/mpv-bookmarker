@@ -5,6 +5,9 @@
 local maxChar = 100
 -- Number of bookmarks to be displayed per page
 local bookmarksPerPage = 10
+-- Font size for the bookmarks list
+local defaultBookmarkFontSize = mp.get_property_number("osd-font-size", 55)
+local bookmarkFontSize = defaultBookmarkFontSize
 -- Whether to close the Bookmarker menu after loading a bookmark
 local closeAfterLoad = true
 -- Whether to close the Bookmarker menu after replacing a bookmark
@@ -40,6 +43,9 @@ local bookmarkerControls = {
   UP = function() jumpSlot(-1) end,
   RIGHT = function() jumpPage(1) end,
   LEFT = function() jumpPage(-1) end,
+  ["+"] = function() changeBookmarkFontSize(2) end,
+  ["-"] = function() changeBookmarkFontSize(-2) end,
+  ["0"] = function() resetBookmarkFontSize() end,
   s = function() addBookmark() end,
   S = function() mode="save" typerStart() end,
   p = function() mode="replace" typerStart() end,
@@ -421,6 +427,11 @@ function parsePath(path)
   return path
 end
 
+--convert path into absolute path
+function makeFullPath(path)
+      return utils.join_path(mp.get_property('working-directory'), path)
+end
+
 -- Loads all the bookmarks in the global table and sets the current page and total number of pages
 -- Also checks for older versions of bookmarks and "updates" them
 -- Also checks for bookmarks made by "mpv-bookmarker" and converts them
@@ -483,12 +494,16 @@ end
 -- Name can be specified or left blank to automake a name
 -- Returns the bookmark if successful or nil if it can't make a bookmark
 function makeBookmark(bname)
-  if mp.get_property("path") ~= nil then
+  local path = mp.get_property('path')
+  if path ~= nil then
     if bname == nil then bname = mp.get_property("media-title").." @ %t" end
+    if string.sub(path, 1, 4) ~= "http" then
+      path = makeFullPath(path)
+    end
     local bookmark = {
       name = parseName(bname),
       pos = mp.get_property_number("time-pos"),
-      path = parsePath(mp.get_property("path")),
+      path = parsePath(path),
       version = 2
     }
     return bookmark
@@ -589,10 +604,11 @@ function jumpToBookmark(slot)
   if bookmarkExists(slot) then
     local bookmark = bookmarks[slot]
     if string.sub(bookmark["path"], 1, 4) == "http" or fileExists(bookmark["path"]) then
-      if parsePath(mp.get_property("path")) == bookmark["path"] then
+      fpath = makeFullPath(mp.get_property("path"))
+      if fpath == bookmark["path"] then
         mp.set_property_number("time-pos", bookmark["pos"])
       else
-        mp.commandv("loadfile", parsePath(bookmark["path"]), "replace", "start="..bookmark["pos"])
+        mp.commandv("loadfile", parsePath(bookmark["path"]), "replace",-1,  "start="..bookmark["pos"])
       end
       if closeAfterLoad then abort(styleOn.."{\\c&H00FF00&}{\\b1}Successfully found file for bookmark:{\\r}\n"..displayName(bookmark["name"])) end
     else
@@ -610,7 +626,8 @@ function displayBookmarks()
   local endSlot = getLastSlotOnPage(currentPage)
 
   -- Prepare the text to display and display it
-  local display = styleOn .. "{\\b1}Bookmarks page " .. currentPage .. "/" .. maxPage .. ":{\\b0}"
+  local fontStyle = "{\\fs" .. bookmarkFontSize .. "}"
+  local display = styleOn .. fontStyle .. "{\\b1}Bookmarks page " .. currentPage .. "/" .. maxPage .. ":{\\b0}"
   for i = startSlot, endSlot do
     local btext = displayName(bookmarks[i]["name"])
     local selection = ""
@@ -619,9 +636,31 @@ function displayBookmarks()
       if mode == "move" then btext = "----------------" end
       btext = btext
     end
-    display = display .. "\n" .. selection .. i .. ": " .. btext .. "{\\r}"
+    display = display .. "\n" .. fontStyle .. selection .. i .. ": " .. btext .. "{\\r}"
   end
   mp.osd_message(display, rate)
+end
+
+-- Changes the bookmarks list font size while keeping it within a usable range
+function changeBookmarkFontSize(amount)
+  amount = tonumber(amount)
+  if amount == nil then return end
+  local newSize = bookmarkFontSize + amount
+  bookmarkFontSize = math.max(8, math.min(96, newSize))
+  if active then displayBookmarks() end
+end
+
+function resetBookmarkFontSize()
+  bookmarkFontSize = defaultBookmarkFontSize
+  if active then displayBookmarks() end
+end
+
+-- Sets the font size from a script-message argument
+function setBookmarkFontSize(size)
+  local newSize = tonumber(size)
+  if newSize == nil then return end
+  bookmarkFontSize = math.max(8, math.min(96, newSize))
+  if active then displayBookmarks() end
 end
 
 local timer = mp.add_periodic_timer(rate * 0.95, displayBookmarks)
@@ -706,3 +745,5 @@ end
 mp.register_script_message("bookmarker-menu", handler)
 mp.register_script_message("bookmarker-quick-save", quickSave)
 mp.register_script_message("bookmarker-quick-load", quickLoad)
+mp.register_script_message("bookmarker-font-size", setBookmarkFontSize)
+mp.register_script_message("bookmarker-font-size-change", changeBookmarkFontSize)
