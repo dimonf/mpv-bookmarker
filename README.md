@@ -49,11 +49,27 @@ local confirmReplace = false
 local confirmDelete = false
 -- The rate (in seconds) at which the bookmarker needs to refresh its interface; lower is more frequent
 local rate = 1.5
--- The filename for the bookmarks file
-local bookmarkerName = "bookmarker.json"
+-- The filename searched for in the working directory and its parents
+local bookmarkerName = ".bookmarker.json"
+-- Number of parent directories to search in addition to the working directory
+local bookmarkSearchParentDepth = 3
 ```
 
-It's recommended not to touch `bookmarkerName` but it's there to be changed in case you already have a file called `bookmarker.json` and don't want that to be overwritten, or to change it to `bookmarks.json` to convert bookmarks created by [mpv-bookmarker](https://github.com/nimatrueway/mpv-bookmark-lua-script).
+At startup, the bookmark file is selected in this order:
+
+1. The `bookmarker-db` CLI script option.
+2. The path in the `MPV_BOOKMARKER` environment variable.
+3. The first `.bookmarker.json` found in mpv's working directory or one of the configured number of parent directories.
+4. If no file exists, `.bookmarker.json` in mpv's working directory; it will be created when a bookmark is saved.
+
+For example:
+
+```sh
+MPV_BOOKMARKER=/path/to/project.bookmarker.json mpv video.mkv
+mpv --script-opts=bookmarker-db=/path/to/project.bookmarker.json video.mkv
+```
+
+Relative environment and CLI paths are resolved from mpv's working directory.
 
 ## Usage
 

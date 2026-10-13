@@ -18,11 +18,16 @@ local confirmReplace = false
 local confirmDelete = false
 -- The rate (in seconds) at which the bookmarker needs to refresh its interface; lower is more frequent
 local rate = 1.5
--- The filename for the bookmarks file
-local bookmarkerName = "bookmarker.json"
+-- The filename searched for in the working directory and its parents
+local bookmarkerName = ".bookmarker.json"
+-- Number of parent directories to search in addition to the working directory
+local bookmarkSearchParentDepth = 3
 
 -- All the "global" variables and utilities; don't touch these
 local utils = require("mp.utils")
+local options = require("mp.options")
+local scriptOptions = { db = "" }
+options.read_options(scriptOptions, "bookmarker")
 local styleOn = mp.get_property("osd-ass-cc/0")
 local styleOff = mp.get_property("osd-ass-cc/1")
 local bookmarks = {}
@@ -33,6 +38,7 @@ local active = false
 local mode = "none"
 local bookmarkStore = {}
 local oldSlot = 0
+local bookmarkFilepath = nil
 
 local function bookmarkFontStyle()
 	return "{\\fs" .. bookmarkFontSize .. "}"
@@ -478,18 +484,6 @@ end
 
 -- // General utilities \\ --
 
--- Check if the operating system is Mac OS
-function isMacOS()
-	local homedir = os.getenv("HOME")
-	return (homedir ~= nil and string.sub(homedir, 1, 6) == "/Users")
-end
-
--- Check if the operating system is Windows
-function isWindows()
-	local windir = os.getenv("windir")
-	return (windir ~= nil)
-end
-
 -- Check whether a certain file exists
 function fileExists(path)
 	local f = io.open(path, "r")
@@ -501,13 +495,37 @@ function fileExists(path)
 	end
 end
 
--- Get the filepath of a file from the mpv config folder
-function getFilepath(filename)
-	if isWindows() then
-		return os.getenv("APPDATA"):gsub("\\", "/") .. "/mpv/" .. filename
-	else
-		return os.getenv("HOME") .. "/.config/mpv/" .. filename
+-- Resolve relative paths against the directory from which mpv was launched.
+local function resolveBookmarkPath(path)
+	path = mp.command_native({ "expand-path", path })
+	if path:match("^/") or path:match("^%a:[/\\]") or path:match("^[/\\][/\\]") then
+		return path
 	end
+	return utils.join_path(mp.get_property("working-directory"), path)
+end
+
+-- Pick one bookmark file for this mpv instance. An explicit CLI script option
+-- wins over the environment; otherwise search upwards from the working directory.
+function findBookmarkFilepath()
+	if scriptOptions.db ~= "" then
+		return resolveBookmarkPath(scriptOptions.db)
+	end
+
+	local environmentPath = os.getenv("MPV_BOOKMARKER")
+	if environmentPath ~= nil and environmentPath ~= "" then
+		return resolveBookmarkPath(environmentPath)
+	end
+
+	local directory = mp.get_property("working-directory")
+	for _ = 0, bookmarkSearchParentDepth do
+		local candidate = utils.join_path(directory, bookmarkerName)
+		if fileExists(candidate) then
+			return candidate
+		end
+		directory = utils.join_path(directory, "..")
+	end
+
+	return utils.join_path(mp.get_property("working-directory"), bookmarkerName)
 end
 
 -- Load a table from a JSON file
@@ -702,7 +720,10 @@ end
 -- Also checks for bookmarks made by "mpv-bookmarker" and converts them
 -- Also removes anything it doesn't recognize as a bookmark
 function loadBookmarks()
-	bookmarks = loadTable(getFilepath(bookmarkerName))
+	if bookmarkFilepath == nil then
+		bookmarkFilepath = findBookmarkFilepath()
+	end
+	bookmarks = loadTable(bookmarkFilepath)
 	if bookmarks == nil then
 		bookmarks = {}
 	end
@@ -762,7 +783,10 @@ end
 
 -- Save the globally loaded bookmarks to the JSON file
 function saveBookmarks()
-	saveTable(bookmarks, getFilepath(bookmarkerName))
+	if bookmarkFilepath == nil then
+		bookmarkFilepath = findBookmarkFilepath()
+	end
+	saveTable(bookmarks, bookmarkFilepath)
 end
 
 -- Make a bookmark of the current media file, position and name
